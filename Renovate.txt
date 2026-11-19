@@ -1,0 +1,168 @@
+## **Renovate Security Review —&#x20;**`platform-tools`
+
+I've reviewed the screenshots of both files:
+
+- `.github/workflows/renovate.yml` — 58 lines
+- `.github/renovate.js` — 182 lines (JavaScript configuration, not JSON)
+
+**Verdict: The current implementation is a reasonable repository-specific pilot, but I would not approve an organization-wide rollout without additional security controls and documentation.**
+
+**Review findings**
+
+Changes recommended
+
+| Area                         | Assessment                                   |
+| ---------------------------- | -------------------------------------------- |
+| GitHub App repository scope  | Restricted to `platform-tools` — good        |
+| GitHub App write permissions | Broad — needs justification                  |
+| GitHub Actions token         | `contents: read` — good                      |
+| Third-party Actions          | Pinned to commit SHAs — good                 |
+| Credentials                  | Secrets used, exposure controls need review  |
+| Auto-merge                   | Explicitly enabled for two dependency groups |
+| PR concurrency               | 30 concurrent PRs — high for wider rollout   |
+| Repository onboarding        | Disabled in current config                   |
+| CI and branch protection     | Not verified                                 |
+| Rollout governance           | Not established by these files               |
+
+## **1. Most important finding: Auto-merge is enabled**
+
+In `.github/renovate.js`:
+
+Lines 25–45
+
+Two package rules explicitly contain:
+
+```
+automerge: true
+```
+
+These apply to:
+
+- `platform-restore-backups` image updates
+- `platform-core-images` grouped image updates
+
+This is **not automatically a vulnerability**. However, you need to confirm that required CI checks, protected branches and any applicable approval requirements cannot be bypassed.
+
+My recommendation: auto-merge should be disabled by default for new squad onboarding, with documented exceptions for low-risk updates after Security and Platform Engineering review.
+
+## **2. Other important gaps**
+
+| Priority | Finding                                                       | Recommendation                                                         |
+| -------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| High     | GitHub App has code and workflow write permissions            | Validate required permissions and reduce unnecessary access            |
+| High     | Automated updates can merge without manual intervention       | Verify required status checks, branch rules and approval policy        |
+| High     | ACR and DHI credentials are passed to Renovate                | Confirm least-privilege access, masking, rotation and log protections  |
+| Medium   | `onboarding: false` and `requireConfig: "optional"`           | Require explicit configuration for additional repositories             |
+| Medium   | `prConcurrentLimit: 30`                                       | Establish lower rollout defaults based on squad capacity               |
+| Medium   | `ubuntu-latest` and the Renovate image use mutable references | Evaluate pinned runner/image versions or digests                       |
+| Medium   | No central rollout approval or exception process visible      | Define ownership, onboarding and exception handling in the draft guide |
+
+One positive detail: the workflow uses a GitHub App installation token restricted to the `platform-tools` repository. That's a stronger starting point than an unrestricted organization-wide installation.
+
+## **3. Specific YAML and JavaScript improvements**
+
+### **A. Reduce the GitHub App token permissions**
+
+In `renovate.yml`, lines 22–29, the workflow creates an installation token but doesn't explicitly request a reduced permission set.
+
+According to GitHub's documentation, an installation token can inherit the permissions granted to its app unless restricted.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://docs.github.com\&sz=32)
+
+GitHub Docs+1
+
+
+
+**Recommendation:** Specify only the permissions Renovate needs, after validating them against the existing workflow. In particular, justify the need for workflow-file write access.
+
+### **B. Change the onboarding policy for the wider rollout**
+
+Current configuration:
+
+```
+onboarding: false,
+requireConfig: "optional",
+```
+
+In this combination, Renovate can operate without a repository configuration file.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://github.com\&sz=32)
+
+GitHub+1
+
+
+
+For squad onboarding, I recommend:
+
+```
+onboarding: true,
+requireConfig: "required",
+```
+
+That introduces an explicit onboarding/configuration requirement. It is a proposed **rollout policy**, not necessarily a correction to the existing `platform-tools` pilot.
+
+### **C. Establish an auto-merge policy**
+
+Current:
+
+```
+automerge: true,
+```
+
+For a general rollout, start with:
+
+```
+automerge: false,
+```
+
+Retain explicitly approved exceptions if the team can demonstrate adequate CI, branch rules and risk-based controls. Renovate supports different automerge mechanisms, so actual bypass behavior needs verification rather than assumption.&#x20;
+
+[image](https://www.google.com/s2/favicons?domain=https://github.com\&sz=32)
+
+GitHub
+
+
+
+### **D. Review execution and credential security**
+
+The existing workflow uses SHA-pinned GitHub Actions, a GitHub App private-key secret and ACR/DHI credentials. These are reasonable starting practices.
+
+Before wider rollout, verify that the `RENOVATE` GitHub environment has appropriate protections, image and action versions are maintained, secrets are rotated, and credentials cannot be disclosed through job logs or untrusted dependency processing.
+
+The Renovate CLI is set to `44.82.0`. That version should receive a separate maintenance and vulnerability review; its age alone does not prove it is vulnerable.
+
+## **4. What I cannot yet confirm**
+
+The screenshots skip some sections of `renovate.js` (roughly lines 50–74 and 148–162). I also haven't inspected GitHub repository rulesets, actual PR check histories, or the complete draft onboarding guide.
+
+Consequently, this is a **preliminary security configuration assessment**, not a final approval or a claim that the workflow has been fully validated.
+
+## **5. What Bhavya should tell Ross and Rachel**
+
+Hi Ross and Rachel,
+
+I've reviewed the existing Renovate GitHub Actions workflow and the self-hosted Renovate configuration in `platform-tools`.
+
+The current implementation includes several good controls, such as SHA-pinned GitHub Actions, restricted repository access, and GitHub App-based authentication.
+
+I identified a few areas to address before extending Renovate to other squads:
+
+- Review and minimize the GitHub App's write permissions.
+- Validate the existing auto-merge rules against branch protection, required reviews and CI checks.
+- Establish an explicit repository onboarding and configuration approval process.
+- Review registry credential permissions, secret handling and rotation.
+- Define rollout defaults for PR concurrency, auto-merge and ongoing version maintenance.
+
+I'll align these findings with the draft dependency automation guide. I recommend keeping the current `platform-tools` pilot separate from the organization-wide rollout decision until the security controls and responsibilities are agreed.
+
+Happy to work through the findings together before finalizing the rollout approach.
+
+## **6. Your next action**
+
+**Before editing any files, open the&#x20;**`platform-tools`**&#x20;Pull requests tab and inspect one Renovate-created PR.**
+
+We need to see whether its CI checks, approvals and merging behavior support the auto-merge policy.
+
+Then compare the results with Ross's draft guide.
+
+**Bottom line:** The biggest questions are not whether Renovate runs—it already does. They are whether its write access is appropriately constrained, whether auto-merge is controlled, and whether new squads must explicitly opt in before Renovate starts changing their repositories.
