@@ -7,7 +7,7 @@ import java.net.URI;
 
 public class CheckTLS {
     public static void main(String[] args) throws Exception {
-        String host = "dv-g3b-emudhra.we-have-a-problem.com";
+        String host = "xx-g3b-xxxxxx.we-have-a-xxxx.com";
 
         try {
             URI uri = new URI("https://" + host);
