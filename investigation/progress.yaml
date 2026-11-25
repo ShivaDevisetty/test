@@ -1,0 +1,32 @@
+Investigation progress
+0 of 9 completed
+
+
+We will complete each step and review its output before proceeding.
+1. Identify the exact Docker image
+   
+   Confirm the image tag, digest, and architecture associated with the finding.
+2. Review Trivy's vulnerability report
+   
+   Verify how CVE-2017-17740 was detected and which package triggered it.
+3. Inspect installed packages
+   
+   Determine whether libldap2, slapd, and relevant OpenLDAP components are installed.
+4. Check for vulnerable modules
+   
+   Search for nops and memberof and determine whether the affected functionality is present.
+5. Review the Dockerfile and base image
+   
+   Trace where libldap2 was introduced into the container.
+6. Check runtime exposure
+   
+   Determine whether an LDAP server runs and whether the vulnerable functionality could be reached.
+7. Verify against authoritative advisories
+   
+   Compare our evidence with Debian and CVE documentation.
+8. Establish the root cause and classification
+   
+   Decide whether the evidence supports a true positive, not affected, or an unresolved finding.
+9. Prepare the investigation report
+   
+   Document commands, outputs, evidence, conclusions, and a concise message to Tory and Ross.
